@@ -253,6 +253,4 @@ public:
   }
 };
 
-Logger &L() { return Logger::getInstance(); }
-
 #endif // __LOGGER_H_
