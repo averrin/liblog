@@ -10,6 +10,8 @@
 using namespace std::string_literals;
 using milliseconds = std::chrono::duration<double, std::milli>;
 
+namespace LibLog {
+
 namespace rang {
 
 enum class style {
@@ -252,5 +254,5 @@ public:
     _aliases.erase(label);
   }
 };
-
+} // namespace LibLog
 #endif // __LOGGER_H_

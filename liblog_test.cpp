@@ -1,6 +1,8 @@
 #include "liblog.hpp"
 #include <string>
 
+using namespace LibLog;
+
 int main() {
     Logger& L = Logger::getInstance();
     L.start("test");
