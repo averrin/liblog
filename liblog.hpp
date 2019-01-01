@@ -156,6 +156,7 @@ class Logger {
   std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>
       _start;
   std::map<std::string, std::string> _aliases;
+  float threshold = 50;
 
   std::string getOffset(int d = 0) {
     std::string offset = "";
@@ -236,7 +237,15 @@ public:
   }
   void stop(std::string label, float b = 0) { stop(label, label, b); }
 
+  void setThreshold(float t) {
+    threshold = t;
+  }
+
   void stop(std::string label, std::string msg, float b) {
+    if (_start.find(label) == _start.end()) {
+      warn("LOGGER", fmt::format("label '{}' not found", label));
+      return;
+    }
     auto start = _start.at(label);
     milliseconds ms = std::chrono::system_clock::now() - start;
     if (ms.count() < b) {
@@ -244,7 +253,7 @@ public:
       return;
     }
     auto time = utils::green(fmt::format("{}", ms.count()));
-    if (ms.count() > 50) {
+    if (ms.count() > threshold) {
       time = utils::style(rang::style::bold,
                           utils::redBg(fmt::format("{}", ms.count())));
     }
