@@ -180,9 +180,9 @@ public:
 class Logger {
 private:
   const std::string FORMAT_ALIAS = "{: ^8}";
-  const std::string FORMAT = "{} ≫ {}[{}] ⊸  {{}}\n";
-  const std::string FORMAT_START = "{} ≫ {}[{}] ⊷  {}\n";
-  const std::string FORMAT_STOP = "{} ≫ {}[{}] ⊶  {}{}\n";
+  const std::string FORMAT = "{} ≫ {}[{}] ⊸\t{{}}\n";
+  const std::string FORMAT_START = "{} ≫ {}[{}] ⊷\t{}\n";
+  const std::string FORMAT_STOP = "{} ≫ {}[{}] ⊶\t{}{}\n";
 
   std::map<std::string, std::string> _aliases;
   float threshold = 50;
@@ -206,13 +206,13 @@ public:
       offset = parent->getOffset();
     }
     for (auto n = 0; n < d; n++) {
-      offset += "│ ";
+      offset += fmt::format(fmt::fg(color), "│ ");
     }
     if (_start.size() == 0) {
       return offset;
     }
     for (auto n = 0; n < _start.size(); n++) {
-      offset += "│ ";
+      offset += fmt::format(fmt::fg(color), "│ ");
     }
     return offset;
   }
@@ -245,15 +245,19 @@ public:
   }
 
   template <typename... Args> void warn(Args... args) {
-    print(utils::yellowBg(utils::black("WARN")),
+    print(utils::bold(utils::grayBg(utils::yellow("WARN"))),
           std::forward<const Args &>(args)...);
   }
   template <typename... Args> void info(Args... args) {
-    print(utils::blueBg(utils::black("INFO")),
+    print(utils::bold(utils::blue("INFO")),
           std::forward<const Args &>(args)...);
   }
   template <typename... Args> void error(Args... args) {
-    print(utils::redBg("!ERR"), std::forward<const Args &>(args)...);
+    print(utils::bold(utils::redBg("!ERR")), std::forward<const Args &>(args)...);
+  }
+  template <typename... Args> void debug(Args... args) {
+    print(utils::gray(utils::italic("_dbg")),
+          std::forward<const Args &>(args)...);
   }
   void start(std::string label, bool silent = false) {
     auto offset = getOffset(static_offset);

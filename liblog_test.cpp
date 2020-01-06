@@ -5,11 +5,12 @@
 using namespace LibLog;
 
 int main() {
-    fmt::print("\n{:*^80}\n\n", "GENERAL");
+    fmt::print("\n{:*^80}\n\n", utils::bold("GENERAL"));
     auto L = Logger::getInstance();
     auto CHLD = Logger(fmt::color::aqua, "CHLD");
     CHLD.setParent(&L);
     auto sign = Logger(fmt::color::purple, "@");
+    sign.setParent(&CHLD);
     L.start("test");
     L.info("INFO");
     CHLD.info("child info");
@@ -17,32 +18,45 @@ int main() {
     CHLD.warn("child warn");
     L.start("errors");
         L.error("ERROR");
+        CHLD.start("colored offsets");
+            CHLD.warn("ERROR");
+            auto at_label = utils::color(fmt::color::purple, "@");
+            sign.start(at_label);
+                sign.info("deep inside");
+            sign.stop(at_label);
+        CHLD.stop("colored offsets");
     L.stop("errors");
-    CHLD.error("child error");
+    L.debug("debug message");
     L.stop("test");
-    sign.info("one letter logger name");
 
-    fmt::print("\n{:*^80}\n\n", "FORMATTING");
+    fmt::print("\n{:*^80}\n\n", utils::bold("FORMATTING"));
     fmt::print("        {}\n", utils::bold("bold string"));
     fmt::print("        {}\n", utils::italic("italic string"));
     fmt::print("        {}\n", utils::underline("underline string"));
     fmt::print("        {}\n", utils::strikethrough("strikethrough string"));
 
     fmt::print("colored rgb: {}, terminal: {}\n", utils::color(fmt::rgb(0,255,0), "green"), utils::green("green"));
-    fmt::print("nested  {}\n",
-               utils::bold("{}+{}={}",
+    fmt::print("nested       {}\n",
+               utils::underline("{}+{}={}",
                            utils::red("{}", 2),
                            utils::blue("{}", 2),
                            utils::green("{}", 2+2)));
 
-    fmt::print("\n{:*^80}\n\n", "MUTE");
+    fmt::print("nested (fmt) {}",
+               fmt::format(fmt::emphasis::underline, "{}+{}={}",
+                           fmt::format(fmt::fg(fmt::terminal_color::red), "{}", 2),
+                           fmt::format(fmt::fg(fmt::terminal_color::blue), "{}", 2),
+                           fmt::format(fmt::fg(fmt::terminal_color::green), "{}", 2+2)));
+    fmt::print(utils::gray("  //same styling bug in original fmtlib implementation\n"));
+
+    fmt::print("\n{:*^80}\n\n", utils::bold("MUTE"));
     L.mute();
     L.error("muted logger");
     L.unmute();
     L.error("unmuted logger");
     L.setMuted(false);
 
-    fmt::print("\n{:*^80}\n\n", "ADVANCED");
+    fmt::print("\n{:*^80}\n\n", utils::bold("ADVANCED"));
     auto OFF = Logger(fmt::color::gray, "OFFSET");
     OFF.setOffset(3);
     L.info("line from root logger");
