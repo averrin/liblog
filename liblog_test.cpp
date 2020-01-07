@@ -35,6 +35,7 @@ int main() {
     fmt::print("        {}\n", utils::underline("underline string"));
     fmt::print("        {}\n", utils::strikethrough("strikethrough string"));
 
+    fmt::print("\n");
     fmt::print("colored rgb: {}, terminal: {}\n", utils::color(fmt::rgb(0,255,0), "green"), utils::green("green"));
     fmt::print("nested       {}\n",
                utils::underline("{}+{}={}",
@@ -49,6 +50,7 @@ int main() {
                            fmt::format(fmt::fg(fmt::terminal_color::green), "{}", 2+2)));
     fmt::print(utils::gray("  //same styling bug in original fmtlib implementation\n"));
 
+    fmt::print("\n");
     L.info("formatted info: {} {}", utils::red("should work"), 1);
     L.warn("formatted warn: {} {}", utils::green("should work"), 2);
     L.error("formatted error: {} {}", utils::blue("should work"), 3);
@@ -64,21 +66,28 @@ int main() {
     fmt::print("\n{:*^80}\n\n", utils::bold("ADVANCED"));
     auto OFF = Logger(fmt::color::gray, "OFFSET");
     OFF.setOffset(3);
-    L.info("line from root logger");
-    OFF.info("line with static offset");
+    L.debug("line from root logger");
+    OFF.debug("line with static offset");
 
+    fmt::print("\n");
     L.print(utils::greenBg(utils::red("CUSTOM")), fmt::format("2+2={}", utils::blue("{}", 4)));
 
-    L.start("first");
-    L.info("1st started");
-    L.start("second");
-    L.info("2nd started");
-    L.stop("second");
-    L.stop("first", "stop label suppresed by message");
+    fmt::print("\n");
+    L.setColor(fmt::color::gold);
+    auto colored_label = utils::color(fmt::color::violet, "colored label");
+    L.setLabelColor(colored_label, fmt::color::violet);
+    L.start("global logger color");
+    L.debug("L.setColor(fmt::color::gold);");
+    L.start(colored_label);
+    L.debug("L.setLabelColor(\"colored label\", fmt::color::violet);");
+    L.stop(colored_label);
+    L.stop("global logger color", "stop label suppressed by message");
+    L.resetColor();
 
+    fmt::print("\n");
     auto label = "longer than 50ms (no border & default threshold)";
     L.start(label);
-        L.info("when threshold is default, start message prints as usually, but time at stop message is highlighted");
+        L.debug("when threshold is default, start message prints as usually, but time at stop message is highlighted");
         std::this_thread::sleep_for(std::chrono::milliseconds(60));
     L.stop(label);
 
@@ -87,9 +96,10 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     L.stop(label, 30);
 
+    fmt::print("\n");
     L.setThreshold(10); //highlight time over 10
     L.start(label, true); //start message suppressed by second argument
-        L.info("start message suppressed, and stop message prints only if threshold exeeded");
+        L.debug("start message suppressed, and stop message prints only if threshold exeeded");
         L.mark("20ms mark (hidden by border)", 20);
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         L.mark("20ms mark");

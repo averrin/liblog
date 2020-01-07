@@ -182,10 +182,13 @@ private:
   const std::string FORMAT_ALIAS = "{: ^8}";
   const std::string FORMAT = "{} ≫ {}[{}] ⊸\t{{}}\n";
   const std::string FORMAT_START = "{} ≫ {}[{}] ⊷\t{}\n";
-  const std::string FORMAT_STOP = "{} ≫ {}[{}] ⊶\t{}{}\n";
+  const std::string OFFSET_START =         "┏";
+  const std::string OFFSET       =         "┃ ";
+  const std::string OFFSET_END   =         "┗";
+  const std::string OFFSET_END_SILENT   =  "╼━";
+  const std::string FORMAT_STOP  = "{} ≫ {}[{}] ⊶\t{}{}\n";
   const std::string FORMAT_MARK = "{} ≫ {}[{}] ⊙\t{}{}\n";
 
-  std::map<std::string, std::string> _aliases;
   float threshold = 50;
   int static_offset = 0;
   std::map<std::string, std::chrono::time_point<std::chrono::system_clock>>
@@ -193,12 +196,19 @@ private:
 
   std::string getName(std::string label) {
     auto pName = name;
-    if (_aliases.find(label) != _aliases.end()) {
-      pName = _aliases[label];
-    }
     auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, pName);
     return alias;
   }
+
+  std::vector<std::string> _labels;
+  std::map<std::string, fmt::internal::color_type> label_colors;
+    fmt::internal::color_type getLabelColor(std::string label) {
+      auto c = color;
+      if (label_colors.find(label) != label_colors.end()) {
+        return label_colors.at(label);
+      }
+      return c;
+    }
 
 public:
   std::string getOffset(int d = 0) {
@@ -207,13 +217,13 @@ public:
       offset = parent->getOffset();
     }
     for (auto n = 0; n < d; n++) {
-      offset += fmt::format(fmt::fg(color), "│ ");
+      offset += fmt::format(fmt::fg(color), OFFSET);
     }
     if (_start.size() == 0) {
       return offset;
     }
-    for (auto n = 0; n < _start.size(); n++) {
-      offset += fmt::format(fmt::fg(color), "│ ");
+    for (auto l : _labels) {
+      offset += fmt::format(fmt::fg(getLabelColor(l)), OFFSET);
     }
     return offset;
   }
@@ -267,14 +277,18 @@ public:
           std::forward<const Args &>(args)...);
   }
 
-  // TODO: define color for offset marks level
   void start(std::string label, bool silent = false) {
     auto offset = getOffset(static_offset);
+    if (silent) {
+      label = "#"+label;
+    }
     _start[label] = std::chrono::system_clock::now();
+    _labels.push_back(label);
     if (silent)
       return;
     if (muted)
       return;
+    offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_START);
     fmt::print(FORMAT_START, getName(label), offset, label,
                utils::yellow("start"));
   }
@@ -282,6 +296,11 @@ public:
   void stop(std::string label, float b = 0) { stop(label, label, b); }
 
   void stop(std::string label, std::string msg, float b = 0) {
+    auto silent = false;
+    if (_start.find("#"+label) != _start.end()) {
+      silent = true;
+      label = "#" + label;
+    } else
     if (_start.find(label) == _start.end()) {
       warn("label '{}' not found", label);
       return;
@@ -289,6 +308,7 @@ public:
     auto start = _start.at(label);
     milliseconds ms = std::chrono::system_clock::now() - start;
     _start.erase(label);
+    _labels.erase(std::remove(_labels.begin(), _labels.end(), label), _labels.end());
     if (ms.count() < b) {
       return;
     }
@@ -298,16 +318,20 @@ public:
     }
     auto offset = getOffset(static_offset);
     _start.erase(label);
-    _aliases.erase(label);
     if (muted)
       return;
+    if (!silent) {
+      offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END);
+    } else {
+      offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END_SILENT);
+    }
     fmt::print(FORMAT_STOP, getName(label), offset, msg, time,
                utils::yellow("ms"));
   }
 
   void mark(std::string msg, float b = 0) {
-    auto label = _start.rbegin()->first;
-    auto start = _start.rbegin()->second;
+    auto label = _labels.back();
+    auto start = _start[label];
     milliseconds ms = std::chrono::system_clock::now() - start;
     if (ms.count() < b) {
       return;
@@ -325,10 +349,14 @@ public:
   void setParent(Logger *p) { parent = p; }
   void setThreshold(float t) { threshold = t; }
   void setOffset(int o) { static_offset = o; }
+  void setColor(fmt::internal::color_type c) { color = c; }
+  void resetColor() { color = fmt::internal::color_type{}; }
 
   void mute() { muted = true; }
   void unmute() { muted = false; }
   void setMuted(bool m) { muted = m; }
+
+  void setLabelColor(std::string label, fmt::internal::color_type c) { label_colors[label] = c; }
 };
 } // namespace LibLog
 #endif // __LOGGER_H_
