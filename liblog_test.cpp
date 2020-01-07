@@ -49,6 +49,11 @@ int main() {
                            fmt::format(fmt::fg(fmt::terminal_color::green), "{}", 2+2)));
     fmt::print(utils::gray("  //same styling bug in original fmtlib implementation\n"));
 
+    L.info("formatted info: {} {}", utils::red("should work"), 1);
+    L.warn("formatted warn: {} {}", utils::green("should work"), 2);
+    L.error("formatted error: {} {}", utils::blue("should work"), 3);
+    L.debug("formatted debug: {} {}", utils::yellow("should work"), 4);
+
     fmt::print("\n{:*^80}\n\n", utils::bold("MUTE"));
     L.mute();
     L.error("muted logger");
@@ -85,6 +90,10 @@ int main() {
     L.setThreshold(10); //highlight time over 10
     L.start(label, true); //start message suppressed by second argument
         L.info("start message suppressed, and stop message prints only if threshold exeeded");
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
+        L.mark("20ms mark (hidden by border)", 20);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        L.mark("20ms mark");
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     L.stop(label, 30);
+
 };
