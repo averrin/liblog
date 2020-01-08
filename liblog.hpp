@@ -207,6 +207,10 @@ private:
       if (label_colors.find(label) != label_colors.end()) {
         return label_colors.at(label);
       }
+      label.erase(std::remove(label.begin(), label.end(), '#'), label.end());
+      if (label_colors.find(label) != label_colors.end()) {
+        return label_colors.at(label);
+      }
       return c;
     }
 
