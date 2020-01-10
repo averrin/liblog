@@ -185,6 +185,9 @@ private:
   const std::string OFFSET_START =         "┏";
   const std::string OFFSET       =         "┃ ";
   const std::string OFFSET_END   =         "┗";
+  const std::string OFFSET_START_ASYNC =   "┍";
+  const std::string OFFSET_ASYNC       =   "╎ ";
+  const std::string OFFSET_END_ASYNC   =   "┕";
   const std::string OFFSET_END_SILENT   =  "╼━";
   const std::string FORMAT_STOP  = "{} ≫ {}[{}] ⊶\t{}{}\n";
   const std::string FORMAT_MARK = "{} ≫ {}[{}] ⊙\t{}{}\n";
@@ -215,19 +218,23 @@ private:
     }
 
 public:
+  bool async = false;
   std::string getOffset(int d = 0) {
     std::string offset = "";
     if (parent != nullptr) {
+      auto pa = parent->async;
+      parent->setAsync(async);
       offset = parent->getOffset();
+      parent->setAsync(pa);
     }
     for (auto n = 0; n < d; n++) {
-      offset += fmt::format(fmt::fg(color), OFFSET);
+      offset += fmt::format(fmt::fg(color), async ? OFFSET_ASYNC : OFFSET);
     }
     if (_start.size() == 0) {
       return offset;
     }
     for (auto l : _labels) {
-      offset += fmt::format(fmt::fg(getLabelColor(l)), OFFSET);
+      offset += fmt::format(fmt::fg(getLabelColor(l)), async ? OFFSET_ASYNC : OFFSET);
     }
     return offset;
   }
@@ -292,7 +299,7 @@ public:
       return;
     if (muted)
       return;
-    offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_START);
+    offset += fmt::format(fmt::fg(getLabelColor(label)), async ? OFFSET_START_ASYNC : OFFSET_START);
     fmt::print(FORMAT_START, getName(label), offset, label,
                utils::yellow("start"));
   }
@@ -325,7 +332,7 @@ public:
     if (muted)
       return;
     if (!silent) {
-      offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END);
+      offset += fmt::format(fmt::fg(getLabelColor(label)), async ? OFFSET_END_ASYNC : OFFSET_END);
     } else {
       offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END_SILENT);
     }
@@ -359,6 +366,8 @@ public:
   void mute() { muted = true; }
   void unmute() { muted = false; }
   void setMuted(bool m) { muted = m; }
+
+  void setAsync(bool m) { async = m; }
 
   void setLabelColor(std::string label, fmt::internal::color_type c) { label_colors[label] = c; }
 };
