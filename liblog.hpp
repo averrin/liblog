@@ -262,9 +262,10 @@ public:
       return;
     auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, name);
 
-    auto fmt_string =
-        fmt::format(FORMAT, alias, getOffset(static_offset), level);
-    auto msg = fmt::format(msg_format, std::forward<const Args &>(args)...);
+    auto fmt_string = fmt::format(fmt::fg(fmt::terminal_color::white), FORMAT,
+                                  alias, getOffset(static_offset), level);
+    auto msg = fmt::format(fmt::fg(fmt::terminal_color::white), msg_format,
+                           std::forward<const Args &>(args)...);
     fmt::print(fmt_string, msg);
   }
 
@@ -376,6 +377,6 @@ public:
   void setLabelColor(std::string label, fmt::detail::color_type c) {
     label_colors[label] = c;
   }
-};
+}; // namespace LibLog
 } // namespace LibLog
 #endif // __LOGGER_H_
