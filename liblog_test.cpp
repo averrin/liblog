@@ -117,7 +117,7 @@ int main() {
   fmt::print("\n");
   auto v = 37;
   v = 0;
-  auto delay = 1250ms / 2;
+  auto delay = 1000ms;
   L.setColor(fmt::color::lime);
 
   L.start("Spinner demo");
