@@ -21,8 +21,20 @@ namespace LibLog {
 using namespace std::chrono;
 
 std::vector<std::vector<std::string>> IndicatorFrames = {
-    {" o    ", "  o   ", "   o  ", "    o ", "     o", "    o ", "   o  ",
-     "  o   ", " o    "},
+    {"🕛", "🕚", "🕙", "🕘", "🕗", "🕖", "🕕", "🕔", "🕓", "🕒", "🕑", "🕐"},
+    {
+        "⦿     ",
+        " ⦿    ",
+        "  ⦿   ",
+        "   ⦿  ",
+        "    ⦿ ",
+        "     ⦿",
+        "    ⦿ ",
+        "   ⦿  ",
+        "  ⦿   ",
+        " ⦿    ",
+        "⦿     ",
+    },
     {"←", "↖", "↑", "↗", "→", "↘", "↓", "↙"},
     {"▁", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▁"},
     {"▖", "▘", "▝", "▗"},
@@ -31,7 +43,6 @@ std::vector<std::vector<std::string>> IndicatorFrames = {
     {"◰", "◳", "◲", "◱"},
     {"◴", "◷", "◶", "◵"},
     {"◐", "◓", "◑", "◒"},
-    {".", "o", "O", "@", "*"},
     {"|", "/", "-", "\\"},
     {"◡◡", "⊙⊙", "◠◠"},
     {"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"},
@@ -74,8 +85,22 @@ std::vector<std::vector<std::string>> IndicatorFrames = {
     {"(*---------)", "(-*--------)", "(--*-------)", "(---*------)",
      "(----*-----)", "(-----*----)", "(------*---)", "(-------*--)",
      "(--------*-)", "(---------*)"},
-    {"█▒▒▒▒▒▒▒▒▒", "██▒▒▒▒▒▒▒▒", "███▒▒▒▒▒▒▒", "████▒▒▒▒▒▒", "█████▒▒▒▒▒",
-     "██████▒▒▒▒", "███████▒▒▒", "████████▒▒", "██████████"},
+    // {"━━━━━━━━"},
+    {"▱▱▱▱▱▱▱", "▰▱▱▱▱▱▱", "▰▰▱▱▱▱▱", "▰▰▰▱▱▱▱", "▰▰▰▰▱▱▱", "▰▰▰▰▰▱▱",
+     "▰▰▰▰▰▰▱", "▰▰▰▰▰▰▰"},
+    {
+        "◻◻◻◻◻◻◻◻",
+        "◼◻◻◻◻◻◻◻",
+        "◼◼◻◻◻◻◻◻",
+        "◼◼◼◻◻◻◻◻",
+        "◼◼◼◼◻◻◻◻",
+        "◼◼◼◼◼◻◻◻",
+        "◼◼◼◼◼◼◻◻",
+        "◼◼◼◼◼◼◼◻",
+        "◼◼◼◼◼◼◼◼",
+    },
+    {"▒▒▒▒▒▒▒▒▒▒", "█▒▒▒▒▒▒▒▒▒", "██▒▒▒▒▒▒▒▒", "███▒▒▒▒▒▒▒", "████▒▒▒▒▒▒",
+     "█████▒▒▒▒▒", "██████▒▒▒▒", "███████▒▒▒", "████████▒▒", "██████████"},
     {"🌍", "🌎", "🌏"},
     {"◜", "◝", "◞", "◟"},
     {"⬒", "⬔", "⬓", "⬕"},
@@ -144,26 +169,31 @@ public:
     thread = std::thread([&]() {
       const std::vector<std::string> &frames =
           (custom_frames.size() > 0) ? custom_frames : IndicatorFrames[type];
-      int l = frames.size();
       progress = 0;
 
       while (is_active) {
-        unsigned int n = 0;
-        if (is_progress) {
-          n = round((l - 1) * progress);
-        } else {
-          n = (int)progress % l;
-        }
-        const std::string &frame = fmt::format(fmt::fg(color), frames[n]);
-        if (!is_progress) {
-          progress++;
-        }
-        std::cout << "\r" << prefix << frame << suffix;
-        last_text_size = prefix.length() + frame.length() + suffix.length();
-        std::cout.flush();
-        std::this_thread::sleep_for(frame_delay);
+        display(frames);
       }
     });
+  }
+
+  void display(const std::vector<std::string> &frames) {
+
+    int l = frames.size();
+    unsigned int n = 0;
+    if (is_progress) {
+      n = round((l - 1) * progress);
+    } else {
+      n = (int)progress % l;
+    }
+    const std::string &frame = fmt::format(fmt::fg(color), frames[n]);
+    if (!is_progress) {
+      progress++;
+    }
+    std::cout << "\r" << prefix << frame << suffix;
+    last_text_size = prefix.length() + frame.length() + suffix.length();
+    std::cout.flush();
+    std::this_thread::sleep_for(frame_delay);
   }
 
   void clear() {
@@ -173,6 +203,9 @@ public:
 
   void stop() {
     if (is_active) {
+      const std::vector<std::string> &frames =
+          (custom_frames.size() > 0) ? custom_frames : IndicatorFrames[type];
+      display(frames);
       is_active = false;
       thread.join();
       if (endmsg.size() > 0) {
@@ -181,6 +214,13 @@ public:
           std::cout << "\r" << endmsg;
         } else {
           std::cout << "\n" << endmsg;
+        }
+      } else {
+        if (hide_on_end) {
+          std::cout << "\r" << std::string(last_text_size, ' ');
+          std::cout << "\r";
+        } else {
+          std::cout << "\n";
         }
       }
       std::cout.flush();

@@ -1,5 +1,7 @@
 #ifndef __LOGGER_H_
 #define __LOGGER_H_
+#include "indicators.hpp"
+#include "peglib.h"
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -13,11 +15,107 @@
 
 using namespace std::string_literals;
 using milliseconds_t = std::chrono::duration<double, std::milli>;
+using namespace peg;
+using namespace peg::udl;
 
 namespace LibLog {
 
 class utils {
 public:
+  static std::string parse(std::string_view text) {
+    parser parser(R"(
+        ROOT      <- CONTENT
+        CONTENT   <- (ELEMENT / TEXT)*
+        ELEMENT   <- $(STAG CONTENT ETAG)
+        STAG      <- '<' _ $tag<TAG_NAME> _ ARG? _ '>'
+        ETAG      <- '</' _ $tag<TAG_NAME> _ '>'
+        TAG_NAME  <- ([a-zA-Z])*
+        ARG       <- '='$([^>])*
+        TEXT      <- TEXT_DATA
+        TEXT_DATA <- ![<] .
+        ~_        <- [ \t\r\n]*
+   )");
+    parser.enable_ast();
+    parser.log = [](std::size_t line, std::size_t col, const std::string &msg) {
+      std::cerr << "Parse error at " << line << ":" << col << " => " << msg
+                << "\n";
+    };
+
+    std::shared_ptr<Ast> ast;
+    std::string content = "";
+    if (parser.parse(text, ast)) {
+      ast = parser.optimize_ast(ast);
+      // fmt::print(ast_to_s(ast));
+      for (auto node : ast->nodes) {
+        content += process_node(node);
+      }
+    }
+
+    return content;
+  }
+
+  static std::string
+  process_node(std::shared_ptr<Ast> node,
+               fmt::text_style parent_style = fmt::text_style{}) {
+    if (node->is_token && node->name != "TAG_NAME")
+      return std::string(node->token);
+    std::string content = "";
+    if (node->name == "TEXT_DATA") {
+      content += node->token;
+    } else if (node->name == "ELEMENT") {
+      auto tag = node->nodes[0]->token;
+      if (tag == "") {
+        tag = node->nodes[0]->nodes[0]->token;
+      }
+      auto style = parent_style;
+      if (tag == "b") {
+        style |= fmt::emphasis::bold;
+      } else if (tag == "u") {
+        style |= fmt::emphasis::underline;
+      } else if (tag == "i") {
+        style |= fmt::emphasis::italic;
+      } else if (tag == "s") {
+        style |= fmt::emphasis::strikethrough;
+      } else if (tag == "red") {
+        style |= fmt::fg(fmt::terminal_color::red);
+      } else if (tag == "black") {
+        style |= fmt::fg(fmt::terminal_color::black);
+      } else if (tag == "green") {
+        style |= fmt::fg(fmt::terminal_color::green);
+      } else if (tag == "yellow") {
+        style |= fmt::fg(fmt::terminal_color::yellow);
+      } else if (tag == "blue") {
+        style |= fmt::fg(fmt::terminal_color::blue);
+      } else if (tag == "magenta") {
+        style |= fmt::fg(fmt::terminal_color::magenta);
+      } else if (tag == "cyan") {
+        style |= fmt::fg(fmt::terminal_color::cyan);
+      } else if (tag == "gray") {
+        style |= fmt::fg(fmt::color::gray);
+      } else if (tag == "color" || tag == "bgcolor") {
+        auto arg = node->nodes[0]->nodes[1]->token;
+        std::stringstream str;
+        std::string s1 = std::string(arg).substr(2, arg.size() - 2);
+        str << s1;
+        uint32_t value;
+        str >> std::hex >> value;
+        if (tag == "bgcolor") {
+          style |= fmt::bg(fmt::rgb(value));
+        } else {
+          style |= fmt::fg(fmt::rgb(value));
+        }
+      }
+      content += process_node(node->nodes[1], style);
+      content = fmt::format(style, content);
+      // fmt::print("dbg: <{}>{}</{}>\n", tag, content, node->nodes[2]->token);
+    } else if (node->name == "CONTENT") {
+      for (auto child : node->nodes) {
+        content += process_node(child, parent_style);
+      }
+    }
+    return content;
+  }
+
   template <typename S, typename... Args>
   static std::string color(fmt::detail::color_type c, const S &fmt_string,
                            const Args &... args) {
@@ -175,16 +273,19 @@ public:
     }
     return splittedStrings;
   }
-};
+}; // namespace LibLog
 
 class Logger {
 private:
   const std::string FORMAT_ALIAS = "{: ^8}";
   const std::string FORMAT = "{} ≫ {}[{}] ⊸\t{{}}\n";
+  const std::string FORMAT_PROGRESS_FULL = "{} ≫ {}[{}%] ";
   const std::string FORMAT_PROGRESS = "{} ≫ {}[";
-  const std::string FORMAT_PROGRESS_END = "] ⊷\t{}";
+  const std::string FORMAT_PROGRESS_END = "] ⎶\t{}";
   const std::string FORMAT_START = "{} ≫ {}[{}] ⊷\t{}\n";
   const std::string OFFSET_START = "┏";
+  //⎡⎣⎢⎛⎝⎜
+  // {"━━━━━━━━"},
   const std::string OFFSET = "┃ ";
   const std::string OFFSET_END = "┗";
   const std::string OFFSET_START_ASYNC = "┍";
@@ -192,7 +293,7 @@ private:
   const std::string OFFSET_END_ASYNC = "┕";
   const std::string OFFSET_END_SILENT = "╼━";
   const std::string FORMAT_STOP = "{} ≫ {}[{}] ⊶\t{}{}\n";
-  const std::string FORMAT_MARK = "{} ≫ {}[{}] ⊙\t{}{}\n";
+  const std::string FORMAT_MARK = "{} ≫ {}[{}] 🎯\t{}{}\n";
 
   float threshold = 50;
   int static_offset = 0;
@@ -259,23 +360,85 @@ public:
   Logger *parent = nullptr;
   Indicator *indicator = nullptr;
 
+  std::string
+  rule(int l = 80,
+       fmt::detail::color_type rule_color = fmt::terminal_color::white,
+       bool end_line = true) {
+    return fmt::format(utils::color(
+        rule_color, utils::bold("{:━^{}}{}", "", l, end_line ? "\n" : "")));
+  }
+
+  std::string
+  stacked(int l, int r,
+          fmt::detail::color_type l_color = fmt::terminal_color::white,
+          fmt::detail::color_type r_color = fmt::color::gray,
+          bool end_line = true) {
+    return rule(l, l_color, false) + rule(r, r_color, end_line);
+  }
+
+  void h1(std::string text) {
+    fmt::print("\n{:━^80}\n\n", utils::bold(" {} ", text));
+  }
+
+  void h2(std::string text) {
+    fmt::print("\n━━{:━<78}\n\n", utils::bold(" {} ", text));
+  }
+
   void busy(std::string label,
             fmt::detail::color_type ind_color = fmt::terminal_color::white,
             int v = 0) {
+    if ((indicator != nullptr && indicator->is_active)) {
+      return;
+    }
+    start(label);
     indicator = spinner(label, ind_color, v);
+    indicator->start();
+  }
+  void release() {
+    if ((indicator == nullptr || !indicator->is_active)) {
+      return;
+    }
+    indicator->stop();
+    indicator = nullptr;
+    is_progress_full = false;
+    stop(indicator_label);
   }
 
   void update(float progress) {
+    if ((indicator == nullptr || !indicator->is_active)) {
+      return;
+    }
     indicator->progress = progress;
-    indicator->set_suffix(fmt::format(
-        FORMAT_PROGRESS_END,
-        fmt::format("{} ({}%)", indicator_label, (int)(progress * 100))));
+    auto p = utils::bold("{:>3}", (int)(progress * 100));
+    if (progress >= 1) {
+      p = utils::green(p);
+    } else if (progress >= 0.8) {
+      p = utils::yellow(p);
+    }
+    if (!is_progress_full) {
+      indicator->set_suffix(fmt::format(
+          FORMAT_PROGRESS_END, fmt::format("{} ({}%)", indicator_label, p)));
+    } else {
+      auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, name);
+      auto prefix =
+          fmt::format(fmt::fg(fmt::terminal_color::white), FORMAT_PROGRESS_FULL,
+                      alias, getOffset(static_offset), p);
+      indicator->set_prefix(prefix);
+    }
+    if (progress >= 1) {
+      release();
+    }
   }
 
   void progress(std::string label,
                 fmt::detail::color_type ind_color = fmt::terminal_color::white,
                 int v = 36) {
+    if ((indicator != nullptr && indicator->is_active)) {
+      return;
+    }
+    start(label);
     indicator = spinner(label, ind_color, v, true);
+    indicator->start();
   }
 
   std::string indicator_label = "";
@@ -288,11 +451,41 @@ public:
                               FORMAT_PROGRESS, alias, getOffset(static_offset));
     indicator_label = label;
     auto suffix = fmt::format(FORMAT_PROGRESS_END, label);
-    auto done = format_msg(utils::bold(fmt::format(fmt::fg(ind_color), "Done")),
-                           label, FORMAT);
-    auto ind = new Indicator(std::chrono::milliseconds(200), v, done, prefix,
+    // auto done = format_msg(utils::bold(fmt::format(fmt::fg(ind_color),
+    // "Done")), label, FORMAT);
+    auto ind = new Indicator(std::chrono::milliseconds(200), v, "", prefix,
                              suffix, ind_color, true, is_progress);
     return ind;
+  }
+
+  bool is_progress_full = false;
+  void
+  progressbar(std::string label,
+              fmt::detail::color_type ind_color = fmt::terminal_color::white,
+              fmt::detail::color_type dim_color = fmt::color::gray,
+              int size = 50) {
+    if ((indicator != nullptr && indicator->is_active)) {
+      return;
+    }
+    is_progress_full = true;
+    start(label);
+    auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, name);
+    auto prefix =
+        fmt::format(fmt::fg(fmt::terminal_color::white), FORMAT_PROGRESS_FULL,
+                    alias, getOffset(static_offset), fmt::format("{:>3}", 0));
+    indicator_label = label;
+    // auto suffix = fmt::format(FORMAT_PROGRESS_END, label);
+    auto suffix = "";
+    // auto done = format_msg(utils::bold(fmt::format(fmt::fg(ind_color),
+    // "Done")), label, FORMAT);
+    std::vector<std::string> frames;
+    for (int i = 0; i <= size; i++) {
+      frames.push_back(stacked(i, size - i, ind_color, dim_color, false));
+    }
+    indicator = new Indicator(std::chrono::milliseconds(200), 0, "", prefix,
+                              suffix, fmt::color::gray, false, true, frames);
+
+    indicator->start();
   }
 
   template <typename... Args>
@@ -308,16 +501,21 @@ public:
     return fmt::format(fmt_string, msg);
   }
 
-  template <typename... Args>
-  void print(std::string level, std::string msg_format, const Args &... args) {
-    if (muted)
-      return;
+  void clearIndicator() {
+
     if ((indicator != nullptr && indicator->is_active)) {
       indicator->clear();
     } else if (parent != nullptr && parent->indicator != nullptr &&
                parent->indicator->is_active) {
       parent->indicator->clear();
     }
+  }
+
+  template <typename... Args>
+  void print(std::string level, std::string msg_format, const Args &... args) {
+    if (muted)
+      return;
+    clearIndicator();
     fmt::print(format_msg(level, msg_format, FORMAT,
                           std::forward<const Args &>(args)...));
   }
@@ -354,10 +552,19 @@ public:
       return;
     if (muted)
       return;
+    clearIndicator();
     offset += fmt::format(fmt::fg(getLabelColor(label)),
                           async ? OFFSET_START_ASYNC : OFFSET_START);
     fmt::print(FORMAT_START, getName(label), offset, label,
                utils::yellow("start"));
+  }
+
+  std::string formatTime(milliseconds_t ms) {
+    auto time = utils::green("{}", ms.count());
+    if (ms.count() > threshold) {
+      time = utils::bold(utils::redBg("{}", ms.count()));
+    }
+    return time;
   }
 
   void stop(std::string label, float b = 0) { stop(label, label, b); }
@@ -379,10 +586,7 @@ public:
     if (ms.count() < b) {
       return;
     }
-    auto time = utils::green("{}", ms.count());
-    if (ms.count() > threshold) {
-      time = utils::style(fmt::emphasis::bold, utils::redBg("{}", ms.count()));
-    }
+    auto time = formatTime(ms);
     auto offset = getOffset(static_offset);
     _start.erase(label);
     if (muted)
@@ -404,13 +608,11 @@ public:
     if (ms.count() < b) {
       return;
     }
-    auto time = utils::green("{}", ms.count());
-    if (ms.count() > threshold) {
-      time = utils::style(fmt::emphasis::bold, utils::redBg("{}", ms.count()));
-    }
+    auto time = formatTime(ms);
     auto offset = getOffset(static_offset);
     if (muted)
       return;
+    clearIndicator();
     fmt::print(FORMAT_MARK, getName(label), offset, msg, time,
                utils::yellow("ms"));
   }
@@ -431,5 +633,10 @@ public:
     label_colors[label] = c;
   }
 }; // namespace LibLog
+
+std::string operator""_p(const char *str, std::size_t len) {
+  return utils::parse(str);
+}
+
 } // namespace LibLog
 #endif // __LOGGER_H_
