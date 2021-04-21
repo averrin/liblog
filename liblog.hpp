@@ -1,12 +1,12 @@
 #ifndef __LOGGER_H_
 #define __LOGGER_H_
 #include "indicators.hpp"
-#include "peglib.h"
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <functional>
 #include <iostream>
+#include <libprint.hpp>
 #include <limits>
 #include <map>
 #include <regex>
@@ -15,265 +15,9 @@
 
 using namespace std::string_literals;
 using milliseconds_t = std::chrono::duration<double, std::milli>;
-using namespace peg;
-using namespace peg::udl;
+using namespace LibPrint;
 
 namespace LibLog {
-
-class utils {
-public:
-  static std::string parse(std::string_view text) {
-    parser parser(R"(
-        ROOT      <- CONTENT
-        CONTENT   <- (ELEMENT / TEXT)*
-        ELEMENT   <- $(STAG CONTENT ETAG)
-        STAG      <- '<' _ $tag<TAG_NAME> _ ARG? _ '>'
-        ETAG      <- '</' _ $tag<TAG_NAME> _ '>'
-        TAG_NAME  <- ([a-zA-Z])*
-        ARG       <- '='$([^>])*
-        TEXT      <- TEXT_DATA
-        TEXT_DATA <- ![<] .
-        ~_        <- [ \t\r\n]*
-   )");
-    parser.enable_ast();
-    parser.log = [](std::size_t line, std::size_t col, const std::string &msg) {
-      std::cerr << "Parse error at " << line << ":" << col << " => " << msg
-                << "\n";
-    };
-
-    std::shared_ptr<Ast> ast;
-    std::string content = "";
-    if (parser.parse(text, ast)) {
-      ast = parser.optimize_ast(ast);
-      // fmt::print(ast_to_s(ast));
-      for (auto node : ast->nodes) {
-        content += process_node(node);
-      }
-    }
-
-    return content;
-  }
-
-  static std::string
-  process_node(std::shared_ptr<Ast> node,
-               fmt::text_style parent_style = fmt::text_style{}) {
-    if (node->is_token && node->name != "TAG_NAME")
-      return std::string(node->token);
-    std::string content = "";
-    if (node->name == "TEXT_DATA") {
-      content += node->token;
-    } else if (node->name == "ELEMENT") {
-      auto tag = node->nodes[0]->token;
-      if (tag == "") {
-        tag = node->nodes[0]->nodes[0]->token;
-      }
-      auto style = parent_style;
-      if (tag == "b") {
-        style |= fmt::emphasis::bold;
-      } else if (tag == "u") {
-        style |= fmt::emphasis::underline;
-      } else if (tag == "i") {
-        style |= fmt::emphasis::italic;
-      } else if (tag == "s") {
-        style |= fmt::emphasis::strikethrough;
-      } else if (tag == "red") {
-        style |= fmt::fg(fmt::terminal_color::red);
-      } else if (tag == "black") {
-        style |= fmt::fg(fmt::terminal_color::black);
-      } else if (tag == "green") {
-        style |= fmt::fg(fmt::terminal_color::green);
-      } else if (tag == "yellow") {
-        style |= fmt::fg(fmt::terminal_color::yellow);
-      } else if (tag == "blue") {
-        style |= fmt::fg(fmt::terminal_color::blue);
-      } else if (tag == "magenta") {
-        style |= fmt::fg(fmt::terminal_color::magenta);
-      } else if (tag == "cyan") {
-        style |= fmt::fg(fmt::terminal_color::cyan);
-      } else if (tag == "gray") {
-        style |= fmt::fg(fmt::color::gray);
-      } else if (tag == "color" || tag == "bgcolor") {
-        auto arg = node->nodes[0]->nodes[1]->token;
-        std::stringstream str;
-        std::string s1 = std::string(arg).substr(2, arg.size() - 2);
-        str << s1;
-        uint32_t value;
-        str >> std::hex >> value;
-        if (tag == "bgcolor") {
-          style |= fmt::bg(fmt::rgb(value));
-        } else {
-          style |= fmt::fg(fmt::rgb(value));
-        }
-      }
-      content += process_node(node->nodes[1], style);
-      content = fmt::format(style, content);
-      // fmt::print("dbg: <{}>{}</{}>\n", tag, content, node->nodes[2]->token);
-    } else if (node->name == "CONTENT") {
-      for (auto child : node->nodes) {
-        content += process_node(child, parent_style);
-      }
-    }
-    return content;
-  }
-
-  template <typename S, typename... Args>
-  static std::string color(fmt::detail::color_type c, const S &fmt_string,
-                           const Args &... args) {
-    return fmt::format(fmt::fg(c), fmt_string,
-                       std::forward<const Args &>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string bg(fmt::detail::color_type c, const S &fmt_string,
-                        const Args &... args) {
-    return fmt::format(fmt::bg(c), fmt_string,
-                       std::forward<const Args &>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string style(fmt::text_style c, const S &fmt_string,
-                           const Args &... args) {
-    return fmt::format(c, fmt_string, std::forward<const Args &>(args)...);
-  }
-
-  template <typename S, typename... Args>
-  static std::string red(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::red, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string black(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::black, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string green(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::green, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string yellow(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::yellow, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string blue(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::blue, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string magenta(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::magenta, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string cyan(const S &fmt_string, Args... args) {
-    return color(fmt::terminal_color::cyan, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string gray(const S &fmt_string, Args... args) {
-    return color(fmt::color::gray, fmt_string, std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string bold(const S &fmt_string, Args... args) {
-    return style(fmt::emphasis::bold, fmt_string, std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string italic(const S &fmt_string, Args... args) {
-    return style(fmt::emphasis::italic, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string underline(const S &fmt_string, Args... args) {
-    return style(fmt::emphasis::underline, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string strikethrough(const S &fmt_string, Args... args) {
-    return style(fmt::emphasis::strikethrough, fmt_string,
-                 std::forward<Args>(args)...);
-  }
-
-  template <typename S, typename... Args>
-  static std::string redBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::red, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string blackBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::black, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string greenBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::green, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string yellowBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::yellow, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string blueBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::blue, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string magentaBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::magenta, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string cyanBg(const S &fmt_string, Args... args) {
-    return bg(fmt::terminal_color::cyan, fmt_string,
-              std::forward<Args>(args)...);
-  }
-  template <typename S, typename... Args>
-  static std::string grayBg(const S &fmt_string, Args... args) {
-    return bg(fmt::color::gray, fmt_string, std::forward<Args>(args)...);
-  }
-
-  template <typename T>
-  static std::string join(const T &array, const std::string &delimiter) {
-    std::string res;
-    for (auto &element : array) {
-      if (!res.empty()) {
-        res += delimiter;
-      }
-
-      res += element;
-    }
-
-    return res;
-  }
-
-  template <typename rT, typename iT>
-  static std::vector<std::shared_ptr<rT>>
-  castObjects(std::vector<std::shared_ptr<iT>> input, bool unique = false) {
-    std::vector<std::shared_ptr<rT>> result;
-    for (auto input_object : input) {
-      if (auto casted_object = std::dynamic_pointer_cast<rT>(input_object)) {
-        result.push_back(casted_object);
-      }
-    }
-    if (unique) {
-      auto it = std::unique(result.begin(), result.end());
-      result.resize(std::distance(result.begin(), it));
-    }
-    return result;
-  }
-
-  static std::vector<std::string> split(std::string strToSplit,
-                                        char delimeter) {
-    std::stringstream ss(strToSplit);
-    std::string item;
-    std::vector<std::string> splittedStrings;
-    while (std::getline(ss, item, delimeter)) {
-      splittedStrings.push_back(item);
-    }
-    return splittedStrings;
-  }
-}; // namespace LibLog
 
 class Logger {
 private:
@@ -359,30 +103,6 @@ public:
   fmt::detail::color_type color;
   Logger *parent = nullptr;
   Indicator *indicator = nullptr;
-
-  std::string
-  rule(int l = 80,
-       fmt::detail::color_type rule_color = fmt::terminal_color::white,
-       bool end_line = true) {
-    return fmt::format(utils::color(
-        rule_color, utils::bold("{:━^{}}{}", "", l, end_line ? "\n" : "")));
-  }
-
-  std::string
-  stacked(int l, int r,
-          fmt::detail::color_type l_color = fmt::terminal_color::white,
-          fmt::detail::color_type r_color = fmt::color::gray,
-          bool end_line = true) {
-    return rule(l, l_color, false) + rule(r, r_color, end_line);
-  }
-
-  void h1(std::string text) {
-    fmt::print("\n{:━^80}\n\n", utils::bold(" {} ", text));
-  }
-
-  void h2(std::string text) {
-    fmt::print("\n━━{:━<78}\n\n", utils::bold(" {} ", text));
-  }
 
   void busy(std::string label,
             fmt::detail::color_type ind_color = fmt::terminal_color::white,
@@ -480,7 +200,8 @@ public:
     // "Done")), label, FORMAT);
     std::vector<std::string> frames;
     for (int i = 0; i <= size; i++) {
-      frames.push_back(stacked(i, size - i, ind_color, dim_color, false));
+      frames.push_back(
+          utils::stacked(i, size - i, ind_color, dim_color, false));
     }
     indicator = new Indicator(std::chrono::milliseconds(200), 0, "", prefix,
                               suffix, fmt::color::gray, false, true, frames);
@@ -633,10 +354,6 @@ public:
     label_colors[label] = c;
   }
 }; // namespace LibLog
-
-std::string operator""_p(const char *str, std::size_t len) {
-  return utils::parse(str);
-}
 
 } // namespace LibLog
 #endif // __LOGGER_H_
