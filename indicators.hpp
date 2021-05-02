@@ -209,14 +209,14 @@ public:
       thread.join();
       if (endmsg.size() > 0) {
         if (hide_on_end) {
-          std::cout << "\r" << std::string(last_text_size, ' ');
+          clear();
           std::cout << "\r" << endmsg;
         } else {
           std::cout << "\n" << endmsg;
         }
       } else {
         if (hide_on_end) {
-          std::cout << "\r" << std::string(last_text_size, ' ');
+          clear();
           std::cout << "\r";
         } else {
           std::cout << "\n";
