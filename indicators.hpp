@@ -11,6 +11,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <iostream>
+#include <libprint.hpp>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -19,6 +20,7 @@
 namespace LibLog {
 
 using namespace std::chrono;
+using namespace LibPrint;
 
 std::vector<std::vector<std::string>> IndicatorFrames = {
     {"🕛", "🕚", "🕙", "🕘", "🕗", "🕖", "🕕", "🕔", "🕓", "🕒", "🕑", "🕐"},
@@ -196,10 +198,7 @@ public:
     std::this_thread::sleep_for(frame_delay);
   }
 
-  void clear() {
-    std::cout << "\r" << std::string(last_text_size, ' ');
-    std::cout << "\r";
-  }
+  void clear() { utils::clearLine(); }
 
   void stop() {
     if (is_active) {
