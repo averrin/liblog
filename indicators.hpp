@@ -164,7 +164,6 @@ public:
   void start() {
     is_active = true;
     std::cout.flush();
-    last_text_size = 0;
     if (type >= IndicatorFrames.size())
       type = 0;
 
@@ -193,12 +192,14 @@ public:
       progress++;
     }
     std::cout << "\r" << prefix << frame << suffix;
-    last_text_size = prefix.length() + frame.length() + suffix.length();
     std::cout.flush();
     std::this_thread::sleep_for(frame_delay);
   }
 
-  void clear() { utils::clearLine(); }
+  void clear() {
+    utils::clearLine();
+    std::cout << "\r";
+  }
 
   void stop() {
     if (is_active) {
@@ -245,7 +246,6 @@ private:
   std::vector<std::string> custom_frames;
   unsigned char type;
   std::string endmsg;
-  unsigned int last_text_size;
   bool hide_on_end;
   std::thread thread;
 };
