@@ -15,7 +15,9 @@
 
 using namespace std::string_literals;
 using milliseconds_t = std::chrono::duration<double, std::milli>;
-using namespace LibPrint;
+
+namespace lp = LibPrint;
+using lu = lp::utils;
 
 namespace LibLog {
 
@@ -129,11 +131,11 @@ public:
       return;
     }
     indicator->progress = progress;
-    auto p = utils::bold("{:>3}", (int)(progress * 100));
+    auto p = lu::bold("{:>3}", (int)(progress * 100));
     if (progress >= 1) {
-      p = utils::green(p);
+      p = lu::green(p);
     } else if (progress >= 0.8) {
-      p = utils::yellow(p);
+      p = lu::yellow(p);
     }
     if (!is_progress_full) {
       indicator->set_suffix(fmt::format(
@@ -171,7 +173,7 @@ public:
                               FORMAT_PROGRESS, alias, getOffset(static_offset));
     indicator_label = label;
     auto suffix = fmt::format(FORMAT_PROGRESS_END, label);
-    // auto done = format_msg(utils::bold(fmt::format(fmt::fg(ind_color),
+    // auto done = format_msg(lu::bold(fmt::format(fmt::fg(ind_color),
     // "Done")), label, FORMAT);
     auto ind = new Indicator(std::chrono::milliseconds(200), v, "", prefix,
                              suffix, ind_color, true, is_progress);
@@ -196,12 +198,11 @@ public:
     indicator_label = label;
     // auto suffix = fmt::format(FORMAT_PROGRESS_END, label);
     auto suffix = "";
-    // auto done = format_msg(utils::bold(fmt::format(fmt::fg(ind_color),
+    // auto done = format_msg(lu::bold(fmt::format(fmt::fg(ind_color),
     // "Done")), label, FORMAT);
     std::vector<std::string> frames;
     for (int i = 0; i <= size; i++) {
-      frames.push_back(
-          utils::stacked(i, size - i, ind_color, dim_color, false));
+      frames.push_back(lu::stacked(i, size - i, ind_color, dim_color, false));
     }
     indicator = new Indicator(std::chrono::milliseconds(200), 0, "", prefix,
                               suffix, fmt::color::gray, false, true, frames);
@@ -211,7 +212,7 @@ public:
 
   template <typename... Args>
   std::string format_msg(std::string level, std::string msg_format,
-                         std::string inner_format, const Args &... args) {
+                         std::string inner_format, const Args &...args) {
     auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, name);
 
     auto fmt_string =
@@ -233,7 +234,7 @@ public:
   }
 
   template <typename... Args>
-  void print(std::string level, std::string msg_format, const Args &... args) {
+  void print(std::string level, std::string msg_format, const Args &...args) {
     if (muted)
       return;
     clearIndicator();
@@ -242,23 +243,23 @@ public:
   }
 
   template <typename... Args> void warn(std::string msg_format, Args... args) {
-    print(utils::bold(utils::grayBg(utils::yellow("WARN"))), msg_format,
+    print(lu::bold(lu::grayBg(lu::yellow("WARN"))), msg_format,
           std::forward<const Args &>(args)...);
   }
 
   template <typename... Args>
-  void info(std::string msg_format, const Args &... args) {
-    print(utils::bold(utils::blue("INFO")), msg_format,
+  void info(std::string msg_format, const Args &...args) {
+    print(lu::bold(lu::blue("INFO")), msg_format,
           std::forward<const Args &>(args)...);
   }
 
   template <typename... Args> void error(std::string msg_format, Args... args) {
-    print(utils::bold(utils::redBg("!ERR")), msg_format,
+    print(lu::bold(lu::redBg("!ERR")), msg_format,
           std::forward<const Args &>(args)...);
   }
 
   template <typename... Args> void debug(std::string msg_format, Args... args) {
-    print(utils::gray(utils::italic("_dbg")), msg_format,
+    print(lu::gray(lu::italic("_dbg")), msg_format,
           std::forward<const Args &>(args)...);
   }
 
@@ -277,13 +278,13 @@ public:
     offset += fmt::format(fmt::fg(getLabelColor(label)),
                           async ? OFFSET_START_ASYNC : OFFSET_START);
     fmt::print(FORMAT_START, getName(label), offset, label,
-               utils::yellow("start"));
+               lu::yellow("start"));
   }
 
   std::string formatTime(milliseconds_t ms) {
-    auto time = utils::green("{}", ms.count());
+    auto time = lu::green("{}", ms.count());
     if (ms.count() > threshold) {
-      time = utils::bold(utils::redBg("{}", ms.count()));
+      time = lu::bold(lu::redBg("{}", ms.count()));
     }
     return time;
   }
@@ -319,7 +320,7 @@ public:
       offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END_SILENT);
     }
     fmt::print(FORMAT_STOP, getName(label), offset, msg, time,
-               utils::yellow("ms"));
+               lu::yellow("ms"));
   }
 
   void mark(std::string msg, float b = 0) {
@@ -335,7 +336,7 @@ public:
       return;
     clearIndicator();
     fmt::print(FORMAT_MARK, getName(label), offset, msg, time,
-               utils::yellow("ms"));
+               lu::yellow("ms"));
   }
 
   void setParent(Logger *p) { parent = p; }
