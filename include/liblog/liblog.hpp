@@ -6,7 +6,7 @@
 #include <fmt/format.h>
 #include <functional>
 #include <iostream>
-#include <libprint.hpp>
+#include <libprint/libprint.hpp>
 #include <limits>
 #include <map>
 #include <regex>

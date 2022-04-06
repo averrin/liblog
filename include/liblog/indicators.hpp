@@ -11,7 +11,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <iostream>
-#include <libprint.hpp>
+#include <libprint/libprint.hpp>
 #include <mutex>
 #include <string>
 #include <thread>
