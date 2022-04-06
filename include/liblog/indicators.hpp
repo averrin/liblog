@@ -20,7 +20,8 @@
 namespace LibLog {
 
 using namespace std::chrono;
-using namespace LibPrint;
+namespace lp = LibPrint;
+using lu = lp::utils;
 
 std::vector<std::vector<std::string>> IndicatorFrames = {
     {"🕛", "🕚", "🕙", "🕘", "🕗", "🕖", "🕕", "🕔", "🕓", "🕒", "🕑", "🕐"},
@@ -197,7 +198,7 @@ public:
   }
 
   void clear() {
-    utils::clearLine();
+    lu::clearLine();
     std::cout << "\r";
   }
 
