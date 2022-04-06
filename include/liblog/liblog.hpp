@@ -1,6 +1,6 @@
 #ifndef __LOGGER_H_
 #define __LOGGER_H_
-#include "indicators.hpp"
+// #include "indicators.hpp"
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -104,9 +104,9 @@ public:
   std::string name = "ROOT";
   fmt::detail::color_type color;
   Logger *parent = nullptr;
-  Indicator *indicator = nullptr;
+  // Indicator *indicator = nullptr;
 
-  void busy(std::string label,
+  /* void busy(std::string label,
             fmt::detail::color_type ind_color = fmt::terminal_color::white,
             int v = 0) {
     if ((indicator != nullptr && indicator->is_active)) {
@@ -208,7 +208,7 @@ public:
                               suffix, fmt::color::gray, false, true, frames);
 
     indicator->start();
-  }
+  } */
 
   template <typename... Args>
   std::string format_msg(std::string level, std::string msg_format,
@@ -225,12 +225,12 @@ public:
 
   void clearIndicator() {
 
-    if ((indicator != nullptr && indicator->is_active)) {
+    /* if ((indicator != nullptr && indicator->is_active)) {
       indicator->clear();
     } else if (parent != nullptr && parent->indicator != nullptr &&
                parent->indicator->is_active) {
       parent->indicator->clear();
-    }
+    } */
   }
 
   template <typename... Args>
