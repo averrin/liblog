@@ -7,7 +7,7 @@ set( EXE_NAME ${PROJECT_NAME} )
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:averrin/libprint#master")
-CPMAddPackage("gh:fmtlib/fmt#7.1.3")
+CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 
 if(libprint_ADDED)
     include_directories("${libprint_SOURCE_DIR}/include")
