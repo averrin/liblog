@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.29.3)
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -7,7 +7,7 @@ set( EXE_NAME ${PROJECT_NAME} )
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:averrin/libprint#master")
-CPMAddPackage("gh:fmtlib/fmt#9.1.0")
+CPMAddPackage("gh:fmtlib/fmt#10.2.1")
 
 if(libprint_ADDED)
     include_directories("${libprint_SOURCE_DIR}/include")
