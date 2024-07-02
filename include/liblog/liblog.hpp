@@ -48,7 +48,7 @@ private:
 
   std::string getName(std::string label) {
     auto pName = name;
-    auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, pName);
+    auto alias = fmt::format(fmt::fg(color), fmt::runtime(FORMAT_ALIAS), pName);
     return alias;
   }
 
@@ -77,14 +77,14 @@ public:
       parent->setAsync(pa);
     }
     for (auto n = 0; n < d; n++) {
-      offset += fmt::format(fmt::fg(color), async ? OFFSET_ASYNC : OFFSET);
+      offset += fmt::format(fmt::fg(color), fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
     }
     if (_start.size() == 0) {
       return offset;
     }
     for (auto l : _labels) {
       offset +=
-          fmt::format(fmt::fg(getLabelColor(l)), async ? OFFSET_ASYNC : OFFSET);
+          fmt::format(fmt::fg(getLabelColor(l)), fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
     }
     return offset;
   }
@@ -213,14 +213,14 @@ public:
   template <typename... Args>
   std::string format_msg(std::string level, std::string msg_format,
                          std::string inner_format, const Args &...args) {
-    auto alias = fmt::format(fmt::fg(color), FORMAT_ALIAS, name);
+    auto alias = fmt::format(fmt::fg(color), fmt::runtime(FORMAT_ALIAS), name);
 
     auto fmt_string =
-        fmt::format(fmt::fg(fmt::terminal_color::white), inner_format, alias,
+        fmt::format(fmt::fg(fmt::terminal_color::white), fmt::runtime(inner_format), alias,
                     getOffset(static_offset), level);
-    auto msg = fmt::format(fmt::fg(fmt::terminal_color::white), msg_format,
+    auto msg = fmt::format(fmt::fg(fmt::terminal_color::white), fmt::runtime(msg_format),
                            std::forward<const Args &>(args)...);
-    return fmt::format(fmt_string, msg);
+    return fmt::format(fmt::runtime(fmt_string), msg);
   }
 
   void clearIndicator() {
@@ -238,8 +238,8 @@ public:
     if (muted)
       return;
     clearIndicator();
-    fmt::print(format_msg(level, msg_format, FORMAT,
-                          std::forward<const Args &>(args)...));
+    fmt::print(fmt::runtime(format_msg(level, msg_format, FORMAT,
+                          std::forward<const Args &>(args)...)));
   }
 
   template <typename... Args> void warn(std::string msg_format, Args... args) {
@@ -276,8 +276,8 @@ public:
       return;
     clearIndicator();
     offset += fmt::format(fmt::fg(getLabelColor(label)),
-                          async ? OFFSET_START_ASYNC : OFFSET_START);
-    fmt::print(FORMAT_START, getName(label), offset, label,
+                          fmt::runtime(async ? OFFSET_START_ASYNC : OFFSET_START));
+    fmt::print(fmt::runtime(FORMAT_START), getName(label), offset, label,
                lu::yellow("start"));
   }
 
@@ -315,11 +315,11 @@ public:
       return;
     if (!silent) {
       offset += fmt::format(fmt::fg(getLabelColor(label)),
-                            async ? OFFSET_END_ASYNC : OFFSET_END);
+                            fmt::runtime(async ? OFFSET_END_ASYNC : OFFSET_END));
     } else {
-      offset += fmt::format(fmt::fg(getLabelColor(label)), OFFSET_END_SILENT);
+      offset += fmt::format(fmt::fg(getLabelColor(label)), fmt::runtime(OFFSET_END_SILENT));
     }
-    fmt::print(FORMAT_STOP, getName(label), offset, msg, time,
+    fmt::print(fmt::runtime(FORMAT_STOP), getName(label), offset, msg, time,
                lu::yellow("ms"));
   }
 
@@ -335,9 +335,10 @@ public:
     if (muted)
       return;
     clearIndicator();
-    fmt::print(FORMAT_MARK, getName(label), offset, msg, time,
+    fmt::print(fmt::runtime(FORMAT_MARK), getName(label), offset, msg, time,
                lu::yellow("ms"));
   }
+
 
   void setParent(Logger *p) { parent = p; }
   void setThreshold(float t) { threshold = t; }
