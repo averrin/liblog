@@ -29,6 +29,7 @@ void general() {
   CHLD.stop("colored offsets");
   L.stop("errors");
   L.debug("debug message");
+  L.var("the answer", 42);
   L.stop("test");
 }
 
@@ -108,10 +109,11 @@ void rules() {
   auto l = 50;
   for (int n = 0; n < 6; n++) {
     fmt::print(fmt::runtime("{:>5}% "), n * 20);
-    fmt::print(fmt::runtime(utils::stacked(n * 10, l - n * 10, fmt::color::orange)));
+    fmt::print(
+        fmt::runtime(utils::stacked(n * 10, l - n * 10, fmt::color::orange)));
   }
-  fmt::print(
-      fmt::runtime(utils::stacked(25, 25, fmt::color::white, fmt::color::dark_gray, false)));
+  fmt::print(fmt::runtime(
+      utils::stacked(25, 25, fmt::color::white, fmt::color::dark_gray, false)));
   fmt::print(fmt::runtime(utils::rule(7, fmt::color::dim_gray)));
 }
 

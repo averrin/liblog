@@ -267,6 +267,13 @@ public:
           std::forward<const Args &>(args)...);
   }
 
+  template <typename... Args> void var(std::string var_name, Args... args) {
+    if (!is_debug)
+      return;
+    print(lu::gray(lu::italic("_dbg")), lu::blue(var_name) + ": {}",
+          std::forward<const Args &>(args)...);
+  }
+
   void start(std::string label, bool silent = false) {
     auto offset = getOffset(static_offset);
     if (silent) {
