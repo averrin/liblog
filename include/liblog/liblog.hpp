@@ -1,5 +1,4 @@
-#ifndef __LOGGER_H_
-#define __LOGGER_H_
+#pragma once
 // #include "indicators.hpp"
 #include <chrono>
 #include <fmt/color.h>
@@ -67,6 +66,7 @@ private:
   }
 
 public:
+  bool is_debug = true;
   bool async = false;
   std::string getOffset(int d = 0) {
     std::string offset = "";
@@ -77,14 +77,15 @@ public:
       parent->setAsync(pa);
     }
     for (auto n = 0; n < d; n++) {
-      offset += fmt::format(fmt::fg(color), fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
+      offset += fmt::format(fmt::fg(color),
+                            fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
     }
     if (_start.size() == 0) {
       return offset;
     }
     for (auto l : _labels) {
-      offset +=
-          fmt::format(fmt::fg(getLabelColor(l)), fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
+      offset += fmt::format(fmt::fg(getLabelColor(l)),
+                            fmt::runtime(async ? OFFSET_ASYNC : OFFSET));
     }
     return offset;
   }
@@ -215,10 +216,11 @@ public:
                          std::string inner_format, const Args &...args) {
     auto alias = fmt::format(fmt::fg(color), fmt::runtime(FORMAT_ALIAS), name);
 
-    auto fmt_string =
-        fmt::format(fmt::fg(fmt::terminal_color::white), fmt::runtime(inner_format), alias,
-                    getOffset(static_offset), level);
-    auto msg = fmt::format(fmt::fg(fmt::terminal_color::white), fmt::runtime(msg_format),
+    auto fmt_string = fmt::format(fmt::fg(fmt::terminal_color::white),
+                                  fmt::runtime(inner_format), alias,
+                                  getOffset(static_offset), level);
+    auto msg = fmt::format(fmt::fg(fmt::terminal_color::white),
+                           fmt::runtime(msg_format),
                            std::forward<const Args &>(args)...);
     return fmt::format(fmt::runtime(fmt_string), msg);
   }
@@ -239,7 +241,7 @@ public:
       return;
     clearIndicator();
     fmt::print(fmt::runtime(format_msg(level, msg_format, FORMAT,
-                          std::forward<const Args &>(args)...)));
+                                       std::forward<const Args &>(args)...)));
   }
 
   template <typename... Args> void warn(std::string msg_format, Args... args) {
@@ -259,6 +261,8 @@ public:
   }
 
   template <typename... Args> void debug(std::string msg_format, Args... args) {
+    if (!is_debug)
+      return;
     print(lu::gray(lu::italic("_dbg")), msg_format,
           std::forward<const Args &>(args)...);
   }
@@ -275,8 +279,9 @@ public:
     if (muted)
       return;
     clearIndicator();
-    offset += fmt::format(fmt::fg(getLabelColor(label)),
-                          fmt::runtime(async ? OFFSET_START_ASYNC : OFFSET_START));
+    offset +=
+        fmt::format(fmt::fg(getLabelColor(label)),
+                    fmt::runtime(async ? OFFSET_START_ASYNC : OFFSET_START));
     fmt::print(fmt::runtime(FORMAT_START), getName(label), offset, label,
                lu::yellow("start"));
   }
@@ -314,10 +319,12 @@ public:
     if (muted)
       return;
     if (!silent) {
-      offset += fmt::format(fmt::fg(getLabelColor(label)),
-                            fmt::runtime(async ? OFFSET_END_ASYNC : OFFSET_END));
+      offset +=
+          fmt::format(fmt::fg(getLabelColor(label)),
+                      fmt::runtime(async ? OFFSET_END_ASYNC : OFFSET_END));
     } else {
-      offset += fmt::format(fmt::fg(getLabelColor(label)), fmt::runtime(OFFSET_END_SILENT));
+      offset += fmt::format(fmt::fg(getLabelColor(label)),
+                            fmt::runtime(OFFSET_END_SILENT));
     }
     fmt::print(fmt::runtime(FORMAT_STOP), getName(label), offset, msg, time,
                lu::yellow("ms"));
@@ -339,8 +346,12 @@ public:
                lu::yellow("ms"));
   }
 
-
-  void setParent(Logger *p) { parent = p; }
+  void setParent(Logger *p) {
+    parent = p;
+    if (parent != nullptr) {
+      is_debug = parent->is_debug;
+    }
+  }
   void setThreshold(float t) { threshold = t; }
   void setOffset(int o) { static_offset = o; }
   void setColor(fmt::detail::color_type c) { color = c; }
@@ -356,6 +367,4 @@ public:
     label_colors[label] = c;
   }
 }; // namespace LibLog
-
 } // namespace LibLog
-#endif // __LOGGER_H_
